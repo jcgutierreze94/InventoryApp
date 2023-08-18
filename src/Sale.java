@@ -44,4 +44,15 @@ public class Sale {
                 ", products=" + products +
                 '}';
     }
+
+    public int getProductQuantity(Product product) {
+        int quantity = 0;
+        for (Product p : products) {
+            if (p.getId() == product.getId()) {
+                quantity++;
+            }
+        }
+        return quantity;
+    }
+
 }

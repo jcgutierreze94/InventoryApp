@@ -54,7 +54,7 @@ public class ConvenienceStoreApp {
 
     private static void registerSale() {
         List<Product> availableProducts = productDAO.getAllProducts();
-        List<Product> selectedProducts = new ArrayList<>();
+        List<ProductSaleInfo> selectedProducts = new ArrayList<>();
 
         while (true) {
             System.out.println("Available Products:");
@@ -72,7 +72,12 @@ public class ConvenienceStoreApp {
 
             if (productNumber > 0 && productNumber <= availableProducts.size()) {
                 Product selectedProduct = availableProducts.get(productNumber - 1);
-                selectedProducts.add(selectedProduct);
+
+                System.out.print("Enter the quantity: ");
+                int quantity = scanner.nextInt();
+                scanner.nextLine(); // Consume the newline character
+
+                selectedProducts.add(new ProductSaleInfo(selectedProduct, quantity));
                 System.out.println(selectedProduct.getName() + " added to the sale.");
             } else {
                 System.out.println("Invalid product number.");
@@ -80,7 +85,22 @@ public class ConvenienceStoreApp {
         }
 
         if (!selectedProducts.isEmpty()) {
-            Sale sale = new Sale(0, LocalDateTime.now(), selectedProducts);
+            List<Product> products = new ArrayList<>();
+            for (ProductSaleInfo productInfo : selectedProducts) {
+                Product product = productInfo.getProduct();
+                int quantitySold = productInfo.getQuantity();
+
+                if (product.getQuantity() >= quantitySold) {
+                    product.setQuantity(product.getQuantity() - quantitySold);
+                    products.add(product);
+                    // Update the product quantity in the database using your ProductDAO
+                    productDAO.updateProduct(product);
+                } else {
+                    System.out.println("Not enough quantity in inventory for " + product.getName());
+                }
+            }
+
+            Sale sale = new Sale(0, LocalDateTime.now(), products);
             saleDAO.insertSale(sale);
             System.out.println("Sale registered successfully!");
         }
@@ -104,6 +124,9 @@ public class ConvenienceStoreApp {
                     removeProductFromInventory();
                     break;
                 case 4:
+                    listProductsInInventory();
+                    break;
+                case 5:
                     exit = true;
                     break;
                 default:
@@ -117,7 +140,8 @@ public class ConvenienceStoreApp {
         System.out.println("1. Add Product to Inventory");
         System.out.println("2. Update Product in Inventory");
         System.out.println("3. Remove Product from Inventory");
-        System.out.println("4. Back to Main Menu");
+        System.out.println("4. List Products in Inventory");
+        System.out.println("5. Back to Main Menu");
         System.out.print("Enter your choice: ");
     }
 
@@ -181,6 +205,19 @@ public class ConvenienceStoreApp {
         }
     }
 
+    private static void listProductsInInventory() {
+        List<Product> products = productDAO.getAllProducts();
+
+        System.out.println("=== Products in Inventory ===");
+        for (Product product : products) {
+            System.out.println("ID: " + product.getId());
+            System.out.println("Name: " + product.getName());
+            System.out.println("Price: $" + product.getPrice());
+            System.out.println("Quantity: " + product.getQuantity());
+            System.out.println();
+        }
+    }
+
     private static void displaySales() {
         List<Sale> sales = saleDAO.getAllSales();
 
@@ -188,9 +225,10 @@ public class ConvenienceStoreApp {
         for (Sale sale : sales) {
             System.out.println("Sale ID: " + sale.getId());
             System.out.println("Timestamp: " + sale.getTimestamp());
-            System.out.println("Products:");
+            System.out.println("Products and Quantities:");
             for (Product product : sale.getProducts()) {
-                System.out.println("- " + product.getName() + " - $" + product.getPrice());
+                int quantity = sale.getProductQuantity(product);
+                System.out.println("- " + product.getName() + " - $" + product.getPrice() + " - Quantity: " + quantity);
             }
             System.out.println();
         }
